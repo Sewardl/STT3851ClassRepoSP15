@@ -1,0 +1,238 @@
+---
+title: "PredictingAlcoholAbuse"
+author: "Luke Seward"
+date: "Wednesday, April 29, 2015"
+output: html_document
+---
+#Purpose of Study
+  The present study looks at results of the National Epidemiologic Survey of Alcohol and Related Conditions (NESARC).  The goals of the analysis are to find relationships between childhood conditions and future alcoholism, in order to help define what conditions are conducive to alcoholism.  The variables focused on include whether or not either parent of the individual was an alcoholic.  This can show the heritability of alcoholism, and also raises some questions on the effects of modeling on future alcoholism, along with other aspects of parental alcoholism that could affect development of dependence or abuse.
+  
+#Variables
+  The variables being used are taken from NESARC: S2DQ1 (was subjects father an alcoholic?), S2DQ2 (was subjects mother an alcoholic?), S1Q2K (did subjects parent die before subject was 18?), MAJORDEPLIFE (presence of major depression in lifetime), DYSLIFE (presence of dysthymia in lifetime), GENAXLIFE (presence of generalized anxiety disorder in lifetime), SEX (gender of subject), S1Q12A (household income), AGE (age of subject).
+  
+#Data Management
+  First, the packages are loaded, and our subset of variables is selected from the overall data set by using the select function.  We also filter the variable showing the age the individual started drinking to only include those who started up to the age of 18.
+```{r}
+library(PDS)
+library(dplyr)
+nesarc.sub <- NESARC %>%
+  filter(!is.na(S2AQ16A) & S2AQ16A <= 18)
+dim(nesarc.sub)
+nesarc.sub <- nesarc.sub %>%
+  select(S2DQ1, S2DQ2, S1Q2K, MAJORDEPLIFE, DYSLIFE, GENAXLIFE, SEX, S1Q12A, AGE, S1Q2L, S2AQ16A, ALCABDEP12DX)
+dim(nesarc.sub)
+summary(nesarc.sub)
+
+m2 <- cbind(1, 1:4)
+colnames(m2, do.NULL = FALSE)
+colnames(m2) <- c("OR","Variable")
+rownames(m2) <- c("FA", "AD", "JJ", "js")
+m2
+
+
+ B=matrix( 
++   c(2, 4, 3, 1, 5, 7), 
++   (nrow=3), 
++   (ncol=2) )
+B
+
+```
+Running the summary on the set shows us a summary of the data, and shows that the response NA is coded as 9 in a few of our variables. 
+
+# Coding Missing Values
+  Our first three variables (FatherAlcoholic, MotherAlcoholic, and ParentDeath) all use a 9 to code unkown, and AgeDeath uses 99.
+```{r}
+nesarc.sub$ALCABDEP12DX[nesarc.sub$ALCABDEP12DX == 2] <- NA
+nesarc.sub$ALCABDEP12DX[nesarc.sub$ALCABDEP12DX == 3] <- NA
+summary(nesarc.sub$ALCABDEP12DX)
+nesarc.sub$ALCABDEP12DX <- factor(nesarc.sub$ALCABDEP12DX)[, drop = TRUE]
+summary(nesarc.sub$ALCABDEP12DX)
+nesarc.sub$S1Q2K[nesarc.sub$S1Q2K == 9] <- NA
+summary(nesarc.sub$S1Q2K)
+nesarc.sub$S1Q2K <- factor(nesarc.sub$S1Q2K)[, drop = TRUE]
+summary(nesarc.sub$S1Q2K)
+summary(nesarc.sub)
+nesarc.sub$S2DQ1[nesarc.sub$S2DQ1 == 9] <- NA
+nesarc.sub$S2DQ1 <- factor(nesarc.sub$S2DQ1)[, drop = TRUE]
+nesarc.sub$S2DQ2[nesarc.sub$S2DQ2 == 9] <- NA
+summary(nesarc.sub$S2DQ2)
+nesarc.sub$S2DQ2 <- factor(nesarc.sub$S2DQ2) [, drop = TRUE]
+summary(nesarc.sub)
+```
+# Renaming Variables
+```{r}
+nesarc.sub <- nesarc.sub %>%
+  rename(FatherAlcoholic = S2DQ1, MotherAlcoholic = S2DQ2, HouseholdIncome = S1Q12A, ParentDeath = S1Q2K, AgeDeath = S1Q2L, AgeStart = S2AQ16A)
+summary(nesarc.sub)
+head(nesarc.sub)
+```
+# Labeling Variables
+  The variables are now given descriptive labels, and the factors of each variable are labeled clearly. 
+```{r}
+library(Hmisc)
+nesarc.sub$MAJORDEPLIFE <-factor(nesarc.sub$MAJORDEPLIFE,labels = c("No Depression", "Yes Depression"))
+nesarc.sub$DYSLIFE <- factor(nesarc.sub$DYSLIFE,labels = c("No Dysthymia", "Yes Dysthymia"))
+nesarc.sub$GENAXLIFE <- factor(nesarc.sub$GENAXLIFE,labels =c("No Anxiey", "Yes Anxiey"))
+nesarc.sub$SEX <- factor(nesarc.sub$SEX,labels = c("Female","Male"))
+nesarc.sub$FatherAlcoholic <- factor(nesarc.sub$FatherAlcoholic, labels = c("Yes","No"))
+nesarc.sub$MotherAlcoholic <- factor(nesarc.sub$MotherAlcoholic, labels = c("Yes", "No"))
+nesarc.sub$ParentDeath <- factor(nesarc.sub$ParentDeath, labels = c("Yes", "No"))
+nesarc.sub$ALCABDEP12DX<- factor(nesarc.sub$ALCABDEP12DX, labels = c("No", "Yes"))
+summary(nesarc.sub)
+```
+
+# Creating Tables
+Simple frequency tables are made for Fatheralcoholic, Motheralcoholic, and ParentDeath
+```{r}
+T1 <- xtabs(~FatherAlcoholic+ALCABDEP12DX, data=nesarc.sub)
+T2 <- xtabs(~MotherAlcoholic, data=nesarc.sub)
+T3 <- xtabs(~ParentDeath, data=nesarc.sub)
+table(nesarc.sub$FatherAlcoholic)
+T1
+T2
+T3
+T4 <- xtabs(~MAJORDEPLIFE, data=nesarc.sub)
+T4
+
+```
+# Graphing Frequency Tables
+Here barplots are created with ggplot to graph the frequencies of the previous variables, as well as MAJORDEPLIFE, DYSLIFE, and GENAXLIFE
+```{r}
+library(ggplot2)
+g1 <- ggplot(data=na.omit(nesarc.sub), aes(x=FatherAlcoholic))+geom_bar(fill="steelblue")
+g1
+g2 <- ggplot(data=na.omit(nesarc.sub), aes(x=MotherAlcoholic))+geom_bar(fill="Firebrick")
+g2
+g3 <- ggplot(data=nesarc.sub, aes(x=ParentDeath))+geom_bar(fill="Red")
+g3
+g4 <- ggplot(data=nesarc.sub, aes(x=MAJORDEPLIFE))+geom_bar(fill="black")
+g4
+```
+
+#Graphing Numeric Variables
+Here a histogram and density plot is created for HouseholdIncome, and another density plot for AGE.  These are two common ways to graph numeric variables, and each graph is colored differently.  These show the distributions of each variable in the data set.  We also create a histogram showing the distribution of age when parent died.
+```{r}
+par(mfrow=c(1,2))
+ggplot(data=nesarc.sub, aes(x=HouseholdIncome))+geom_density(fill="steelblue")+theme_bw()
+ggplot(data = na.omit(nesarc.sub), aes(x = HouseholdIncome)) +
+  geom_histogram(binwidth = 100500, fill = "gray") + 
+  labs(x = "Household Income") +
+  theme_bw()
+ggplot(data=nesarc.sub, aes(x=AGE))+geom_density(fill="green")
+ggplot(data=na.omit(nesarc.sub), aes(x=AgeDeath))+geom_histogram(fill="purple")
+ggplot(data=na.omit(nesarc.sub), aes(x=AgeStart))+geom_histogram(fill="red")
+```
+
+#The 3 S's
+
+Since Age is skewed to the right, the median is the best measure of Center.
+```{r}
+summary(nesarc.sub$AGE)
+fivenum(nesarc.sub$AGE)
+median(nesarc.sub$AGE)
+IQR(nesarc.sub$AGE)
+```
+#Bivariate Variables
+Two variables that could be related are presence of Major Depression and whether or not the subject's father was an alcoholic.  To look at this relationship, we can create some tables to see the proportions of people with Major Depression whos fathers were alcoholics.  Then we can create a visual representation of the relationship in a graph, which we can color to clearly show the data.  We also omit all of the NA responses in the graph, so we can only see yes/no responses.  Then we add a title.
+```{r}
+T1 <- xtabs(~FatherAlcoholic + MAJORDEPLIFE, data = nesarc.sub)
+T1
+T2 <- prop.table(T1, 2)
+T2
+barplot(T2)
+
+g7 <- ggplot(data = na.omit(nesarc.sub), aes(x = AgeStart, fill = MotherAlcoholic))+geom_bar(position="fill")
+g7+
+  labs(x = "Starting Age", y = "Maternal Alcoholism", title = "Starting Age with and without maternal alcoholism")
+g8 <- ggplot(data = na.omit(nesarc.sub), aes(x = ALCABDEP12DX, fill = FatherAlcoholic))+geom_bar(position="fill")
+g8+
+  labs(x = "Alcohol Abuse", y = "Paternal Alcoholism", title = "Presence of Alcohol Abuse With and Without Paternal Alcoholism")
+
+plot(AgeStart~FatherAlcoholic, data=nesarc.sub)
+plot(AgeStart~MotherAlcoholic, data=nesarc.sub)
+```
+
+#Multivariate Graph
+Since the previous graph showed some interesting results on the relationship between starting age and parental alcoholism, We can create a mosaic plot to show the relationships between all three variables (MotherAlcoholic, FatherAlcoholic, and AgeStart), and we shade it to show the nature of the residuals for each factor.  
+```{r}
+library(vcd)
+mosaic(~ALCABDEP12DX + FatherAlcoholic + MotherAlcoholic, data = nesarc.sub, shade = TRUE)
+```
+
+#Hypotheses
+Ho: Mean1 = Mean2 = 0
+Ha: Mean1 =/= Mean2 =/= 0
+Here we're looking at the difference in mean age when started drinking for those with/without alcoholic fathers, then another set for alcoholic mothers.  The alternative hypothesis states that the difference in means will not be zero, meaning one sample mean is significantly different than the other.
+
+
+```{r}
+agestart.aov <- aov(AgeStart~FatherAlcoholic+MotherAlcoholic, data=nesarc.sub)
+summary(agestart.aov)
+Fobs <- summary(agestart.aov)[[1]][1,4]
+Fobs
+set.seed(123)
+sims <- 5000
+FR <- numeric(sims)
+for(i in 1:sims){FR[i] <- summary(aov(AgeStart~sample(FatherAlcoholic), data=nesarc.sub))[[1]][1,4]}
+pv <- (sum(FR>=Fobs)+1)/(sims +1)
+pv
+agestart.father <- tapply(nesarc.sub$AgeStart, nesarc.sub$FatherAlcoholic, mean, na.rm=TRUE)
+agestart.father
+stat_bin(binwidth=60)
+ggplot(data = na.omit(nesarc.sub), aes(x = AgeStart, fill = FatherAlcoholic))+geom_bar(position="fill")
+t.test(AgeStart~FatherAlcoholic, data=nesarc.sub, var.equal=TRUE)
+agestart.mother <- tapply(nesarc.sub$AgeStart, nesarc.sub$MotherAlcoholic, mean, na.rm=TRUE)
+agestart.mother
+t.test(AgeStart~MotherAlcoholic, data=nesarc.sub, var.equal=TRUE)
+mother.aov <- aov(AgeStart~MotherAlcoholic, data=nesarc.sub)
+summary(mother.aov)
+father.aov <- aov(AgeStart~FatherAlcoholic, data=nesarc.sub)
+summary(father.aov)
+TukeyHSD(mother.aov)
+TukeyHSD(father.aov)
+```
+
+By looking at the ANOVA output for each group, we can see that those with alcoholic mothers or fathers started drinking earlier than those without.  For those with alcoholic fathers, the mean starting age is 19.7, compared to 22.04 for those without alcoholic fathers.  This is a significant difference as well, we can tell by looking at the p-value which is basically 0.
+For those with alcoholic mothers, the mean age dropped for each response (yes or no), but showed a similar disparity.  Those with alcoholic mothers started drinking at an average age of 18.72, while those without started at an age of 21.7.  Again we have a very low, significant p-value to show that the difference is not due to random chance.  
+
+#Chi-Squared Test
+The hypotheses we are testing are:
+Ho: FatherAlcoholic and Alcohol abuse are independent
+Ha: FatherAlcoholic and Alcohol abuse are not independent
+```{r}
+Ta1 <- xtabs(~ALCABDEP12DX+FatherAlcoholic, data=nesarc.sub)
+addmargins(Ta1)
+chisq.test(Ta1)
+chisq.test(Ta1)$exp
+```
+Here we get a p-value of almost zero, meaning we reject the null hypothesis, meaning our two variables FatherAlcoholic and Alcohol abuse are related somehow. The table of expected values shows what the values should be if our null hypothesis is true.
+```{r} 
+Ta2 <- xtabs(~ALCABDEP12DX+MotherAlcoholic, data=nesarc.sub)
+Ta2
+chisq.test(Ta2)
+chisq.test(Ta2)$exp
+```
+This chi square test is testing:
+Ho: MotherAlcoholic and Alcohol abuse are independent
+Ha: MotherAlcoholic and Alcohol abuse are not independent
+Here we get a p-value of .4645, which is not significant.  We fail to reject the null hypothesis, meaning that Alcohol abuse and MotherAlcoholic are independent of each other.
+
+```{r}
+logregfull<-glm(nesarc.sub$ALCABDEP12DX~nesarc.sub$FatherAlcoholic+nesarc.sub$MAJORDEPLIFE+nesarc.sub$ParentDeath+nesarc.sub$DYSLIFE+nesarc.sub$GENAXLIFE+nesarc.sub$HouseholdIncome, family=binomial(link=probit))
+summary(logregfull)
+logreg <- glm(nesarc.sub$ALCABDEP12DX~nesarc.sub$FatherAlcoholic+nesarc.sub$MAJORDEPLIFE+nesarc.sub$SEX+nesarc.sub$ParentDeath+nesarc.sub$GENAXLIFE, family=binomial(link=probit))
+summary(logreg)
+deviance(logreg)
+plot(logreg)
+aov(logreg)
+confint(logreg, level=0.95)
+1-pchisq(deviance(logreg), df.residual(logreg))
+plot(AgeStart~FatherAlcoholic, data=nesarc.sub)
+plot(AgeStart~MotherAlcoholic, data=nesarc.sub)
+
+plot(predict(logreg), residuals(logreg))
+
+
+
+```
+Here we find the best set of predictors, containing the fewest that we can to still obtain an accurate model.  Since the response variable is either yes/no, binary logistic regression is used.  After running each link function, the probit model reduced our deviance the most(even though it was a small difference), so it is selected for use.  

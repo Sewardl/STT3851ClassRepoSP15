@@ -4,6 +4,7 @@
 \usepackage{amsmath, amsfonts, amssymb, pxfonts, eulervm, xspace, enumerate, hyperref, color, bookmark}
 \usepackage{graphicx}
 \usepackage[orientation=landscape, size=a0, scale=1.4, debug]{beamerposter}
+\usepackage{amsmath}
 % \usepackage{natbib}
 
 \usecolortheme{rose}
@@ -15,9 +16,9 @@
 \newcommand{\footright}{\href{https://github.com/alanarnholt/STT3851-SP2015-Arnholt-Alan}{https://github.com/alanarnholt/STT3851-SP2015-Arnholt-Alan}}
 \newcommand{\footleft}{\href{mailto:arnholtat@appstate.edu}{Faculty Advisor: Alan Arnholt}}
 
-\def\conference{16\textsuperscript{th} Annual Celebration of Student Research and Creative Endeavors}
-\title{Using Statistical Learning to Predict North Carolina County Voting Patterns}
-\author{Will Callaway, Eitan Lees, Maureen O'Donnell} 
+\def\conference{\textsuperscript{} }
+\title{Predicting Future Alcoholism from Parental Behavior}
+\author{Luke Seward} 
 \institute{Department of Mathematical Sciences}
 %-------------------------------------------------------------------
 
@@ -31,12 +32,8 @@
 <<setup, comment = NA, echo = FALSE, message = FALSE, warning=FALSE>>=
 options(width = 35)
 opts_chunk$set(comment = NA, fig.align='center', fig.width=13, fig.height=6, cache=FALSE, warning = FALSE, message = FALSE)
-require(maps)
 require(ggplot2)
-require(PASWR)
-require(tree)
-require(randomForest)
-require(boot)
+library(PDS)
 require(xtable)
 @
 
@@ -45,24 +42,22 @@ require(xtable)
 \begin{minipage}[t][.955\textheight]{\linewidth} 
 %-- Block 1-1
 % \vspace{0ex}
-\begin{block}{Overview}
+\begin{block}{Introduction}
 \begin{itemize}
-\item On May 8, 2012, North Carolina voters approved Amendment One.  This poster examines four different models used to predict North Carolina county voting behavior.  
-\item To ensure accurate predictive power for future observations, the data are split into a training set (80\%) and a test set (20\%). 
-\item Root mean squared error of the test set is used as a measure of model adequacy.  
-\item All computations and graphs are created with the open source software \texttt{R} \cite{R-base}. 
+\item Alcoholism is prevalent in society, and whether or not it is an illness is a hotly debated subject.  This study looks at some possible underlying causes of alcoholism, in order to better predict the chance of future alcohol abuse. This could also support the idea of alcoholism as a mental illness, if relationships are found.
+\item Data for this study is taken from the National Epidemiologic Survey of Alcohol and Related Conditions (NESARC). 
+\item Logistic regression analysis is conducted on the data, and a chi-squared goodness-of-fit test is used to describe the fit of the model.
+\item All computations and graphs are created with the open source software \texttt{R}. 
 \end{itemize}
 \vspace{0ex}
 \end{block}
 \vfill
 
 %-- Block 1-2
-\begin{block}{K-Fold Cross-Validation}
+\begin{block}{Research Questions}
 \begin{itemize}
-\item Cross validation is the simplest and most widely used method for estimating prediction error \cite{JF09}.  This method directly estimates the expected extra-sample error, $Err = E[{L(Y, \hat{f\,}\!(X))}]$.  In this work, the loss function, $L$, is the square root of the average squared error loss.
-\vspace{2ex}
-\item The data in this project is split into $K=10$ equal sized parts.  The cross-validation estimate of the prediction error is $$CV(\hat{f\,}\!)=\frac{1}{N}\sum_{i=1}^{N}L(y_i, \hat{f\,}\!^{-K(i)}(x_i)),$$
-where $\hat{f\,}\!^{-K}(x)$ denotes the fitted function with the $K$\textsuperscript{th} part of the data removed.
+\item The questions this study is asking pertain to  parental behaviors, childhood experiences, and other mental (mood) disorders to see if any of these display a relationship with future alcohol abuse.
+\item Several variables were selected from the NESARC survey in order to look at possible relationships more closely.  These variables included maternal/paternal alcoholism, parental death, age when started drinking, and several mood disorders.  
 \end{itemize}
 \vspace{0ex}
 \vfill
@@ -70,42 +65,13 @@ where $\hat{f\,}\!^{-K}(x)$ denotes the fitted function with the $K$\textsupersc
 \vfill
 
 %-- Block 1-3
-\begin{block}{Basic Models Used}
-\begin{enumerate}[I.]
-\item Least Squares Regression
-\vspace{2ex}
-
-Note: Variables are described in the Variable Table handout.
-\begin{enumerate}[a.]
-\item Model from \cite{DE12} applied to Training data (\textcolor{blue}{mod1A}) --- Percent voting for Amendment One is modeled using the predictors pct18.24, medinc, pctb, mccain08, evanrate, pctrural, and pctba. 
-\item Our OLS model applied to Training data (\textcolor{blue}{mod1B}) --- Percent voting for Amendment One is modeled using the predictors obama08, pctrural, pctw, pctd, pctb, log(pct18.24), log(pctcolenrol), pctfm, log(pctfd), pctown,  medinc, $\text{medinc}^2$, evanrate, $\text{evanrate}^2$, pctfb, $\text{pctfb}^2$, log(pctstud), and log(colden).
-\end{enumerate}
-\item Cross validated, $K = 10$, and pruned, $n_{\text{leaves}}=4$, regression tree \cite{JF09} (\textcolor{blue}{mod2})
-\item Random Forest built from, $n_{\text{trees}} = 5000 $, \cite{AL02} (\textcolor{blue}{mod3})
-\end{enumerate}
+\begin{block}{Methods}
+\begin{itemize}
+\item Several variables were selected from the NESARC survey in order to look at possible relationships more closely.  These variables included maternal/paternal alcoholism, parental death, age when started drinking, and several mood disorders.  %
+\item The response variable was selected as whether or not the individual has abused alcohol in the past 12 months or not.
+\item Logistic regression was chosen to analyze the binary response. To decide on a link function, the minimum SSE deviance is looked at, along with plots of the data to decide which function best fits the research. 
+\end{itemize}
 \vspace{0ex}
-<<REGmodels, echo = FALSE>>=
-NCV <- read.csv("../Data/NCV03-29-13.csv")
-set.seed(13)
-train_index <- sample(1:100,size=80)
-train1_NCV <- NCV[train_index,]
-test1_NCV <- NCV[-train_index,]
-train_NCV <- train1_NCV[,-c(1,6,7,11,13,14,15,16,17,18,
-                           19,20,33,34,35,36,37,38,39,40,49,50)]
-test_NCV <- test1_NCV[,-c(1,6,7,11,13,14,15,16,17,18,
-                           19,20,33,34,35,36,37,38,39,40,49,50)]
-BJmod <- glm(pctfor ~ pct18.24 + medinc + pctb + mccain08 + evanrate + pctrural + pctba, data = train_NCV, family = gaussian)
-# summary(BJmod)
-# removed some variables...some more to consider???:  medinc + I(medinc^2) + evanrate + I(evanrate^2) + pctfb + I(pctfb^2) + log(pctstud + 1e-6)  + log(colden + 1e-6)
-EMmod <- glm(pctfor ~ obama08 + pctrural + pctw + pctd + pctb + log(pct18.24 + 1e-6)  + log(pctcolenrol + 1e-6) + pctfm + log(pctfd + 1e-6) + pctown + medinc + I(medinc^2) + evanrate + I(evanrate^2) + pctfb + I(pctfb^2) + log(pctstud + 1e-6)  + log(colden + 1e-6) , data=train_NCV, family = gaussian)
-
-RMSEmod1aNoCV <- sqrt(mean(resid(BJmod)^2))
-# cross-validated
-val.10.fold <- cv.glm(data = train_NCV, glmfit = BJmod, K = 10)
-RMSEmod1a <- val.10.fold$delta[1]^.5
-val.10.foldEM <- cv.glm(data = train_NCV, glmfit = EMmod, K = 10)
-RMSEmod1b <- val.10.foldEM$delta[1]^.5
-@
 \end{block}
 \vfill
 
@@ -118,61 +84,73 @@ RMSEmod1b <- val.10.foldEM$delta[1]^.5
 \begin{minipage}[t][.955\textheight]{\linewidth} 
 %-- Block 2-1
 %\vspace{0ex}
-\begin{block}{Cross Validated and Pruned Tree}
+\begin{block}{Alcohol Relationships}
 %\vspace{0ex}
-<<TREE, echo = FALSE, fig.width = 13, fig.height= 5>>=	  
-options(digits = 7)
-set.seed(21)
-ncTree <- tree(pctfor ~ . , data = train_NCV)
-# plot(cv.tree(ncTree, FUN = prune.tree, method = "deviance"))
-pruneTree <- prune.tree(ncTree, best = 4)
-plot(pruneTree)
-text(pruneTree, cex = 1.5)
-RMSEmod2 <- sqrt(mean(resid(pruneTree)^2))
-rfMod <- randomForest(pctfor ~., data = train_NCV, ntree = 5000, importance = TRUE, na.action = na.omit, proximity = TRUE)
-# print(rfMod)
-NCV$RFpctfor <- predict(rfMod, newdata = NCV)
-NCV$EMWpctfor <- predict(EMmod, newdata = NCV)
+<<TREE, echo = FALSE, fig.width = 13, fig.height= 6.5>>=	 
+library(dplyr)
+nesarc.sub <- NESARC %>%
+  filter(!is.na(S2AQ16A) & S2AQ16A <= 18)
+nesarc.sub <- nesarc.sub %>%
+  select(S2DQ1, S2DQ2, S1Q2K, MAJORDEPLIFE, DYSLIFE, GENAXLIFE, SEX, S1Q12A, AGE, S1Q2L, S2AQ16A, ALCABDEP12DX)
+
+nesarc.sub$ALCABDEP12DX[nesarc.sub$ALCABDEP12DX == 2] <- NA
+nesarc.sub$ALCABDEP12DX[nesarc.sub$ALCABDEP12DX == 3] <- NA
+nesarc.sub$ALCABDEP12DX <- factor(nesarc.sub$ALCABDEP12DX)[, drop = TRUE]
+nesarc.sub$S1Q2K[nesarc.sub$S1Q2K == 9] <- NA
+nesarc.sub$S1Q2K <- factor(nesarc.sub$S1Q2K)[, drop = TRUE]
+nesarc.sub$S2DQ1[nesarc.sub$S2DQ1 == 9] <- NA
+nesarc.sub$S2DQ1 <- factor(nesarc.sub$S2DQ1)[, drop = TRUE]
+nesarc.sub$S2DQ2[nesarc.sub$S2DQ2 == 9] <- NA
+nesarc.sub$S2DQ2 <- factor(nesarc.sub$S2DQ2) [, drop = TRUE]
+nesarc.sub <- nesarc.sub %>%
+  rename(FatherAlcoholic = S2DQ1, MotherAlcoholic = S2DQ2, HouseholdIncome = S1Q12A, ParentDeath = S1Q2K, AgeDeath = S1Q2L, AgeStart = S2AQ16A)
+library(Hmisc)
+MAJORDEPLIFE <-factor(nesarc.sub$MAJORDEPLIFE,labels = c("No Depression", "Yes Depression"))
+DYSLIFE <- factor(nesarc.sub$DYSLIFE,labels = c("No Dysthymia", "Yes Dysthymia"))
+GENAXLIFE <- factor(nesarc.sub$GENAXLIFE,labels =c("No Anxiey", "Yes Anxiey"))
+SEX <- factor(nesarc.sub$SEX,labels = c("Female","Male"))
+FatherAlcoholic <- factor(nesarc.sub$FatherAlcoholic, labels = c("Yes","No"))
+MotherAlcoholic <- factor(nesarc.sub$MotherAlcoholic, labels = c("Yes", "No"))
+ParentDeath <- factor(nesarc.sub$ParentDeath, labels = c("Yes", "No"))
+ALCABDEP12DX<- factor(nesarc.sub$ALCABDEP12DX, labels = c("No", "Yes"))
+g8 <- ggplot(data = na.omit(nesarc.sub), aes(x = ALCABDEP12DX, fill = FatherAlcoholic))+geom_bar(position="fill")
+g8+
+  labs(x = "Alcohol Abuse", y = "Paternal Alcoholism", title = "Alcohol Abuse vs Paternal Alcoholism")
+######
+g7 <- ggplot(data = na.omit(nesarc.sub), aes(x = AgeStart, fill = MotherAlcoholic))+geom_bar(position="fill")
+g7+
+  labs(x = "Starting Age", y = "Maternal Alcoholism", title = "Starting Age vs Maternal Alcoholism")
 @
-\vspace{-3ex}
+\vspace{3ex}
 \end{block}
 \vfill
 
 %-- Block 2-2
 %\vspace{3ex}
-\begin{block}{North Carolina Maps}
-\vspace{-2ex}
-<<NCmap, echo = FALSE, fig.width = 13, fig.height=6.5>>=
-# NCV <- read.csv("../../NCV03-29-13.csv")
-NC_map <- map_data('county', 'north carolina') 
-# Need to force COUNTY to lowercase
-MERGED <- merge(NC_map, NCV, by.x = "subregion", by.y = "countyName")
-# dim(MERGED)
-p2 <- ggplot(data = MERGED, aes(x = long, y = lat, group = group, fill = pctfor)) # set up data
-p3 <- ggplot(data = MERGED, aes(x = long, y = lat, group = group, fill = pctba*100))
-##
-p4 <- ggplot(data = MERGED, aes(x = long, y = lat, group = group, fill = EMWpctfor))
-##
 
-theme_clean <- function(base_size = 12){
-  require(grid)  # need for unit() function
-    theme_grey(base_size) %+replace%
-    theme(
-      axis.title         = element_blank(),
-      axis.text          = element_blank(),
-      panel.background   = element_blank(),
-      panel.grid         = element_blank(),
-      axis.ticks.length  = unit(0, "cm"),
-      axis.ticks.margin  = unit(0.01, "cm"),
-      panel.margin       = unit(c(0,0,0,0), "lines"),
-      plot.margin        = unit(c(0, 0, 0, 0), "lines"),
-      complete = TRUE
-    )
-}
-p2 + geom_polygon(color="white") + scale_fill_gradient2(low = "blue", mid ="grey90", high = "red", midpoint= 50) + coord_map("polyconic") + theme_clean() + labs(fill = "Percent Voting For\nAmendment One")  #+ ggtitle("North Carolina Counties")
-p3 + geom_polygon(color="white") + scale_fill_gradient2(low = "red", mid="grey90", high = "blue", midpoint=16) + coord_map("polyconic") + theme_clean() + labs(fill = "Percent with\nBA/BS degree\nor Higher Degree")  #+ ggtitle("North Carolina Counties")
-p4 + geom_polygon(color="white") + scale_fill_gradient2(low="blue", mid="grey90", high="red", midpoint= 50) + coord_map("polyconic") + theme_clean() + labs(fill = "Prediction of\nPercent Voting For\nAmendment One\nBased on mod1b") # +  ggtitle("North Carolina Counties")
+\begin{block}{Results}
+\vspace{0ex}
+Here the model is fitted to the logit link function, and the deviance and plots are shown.  The deviance(shown below) is very similar to the values gotten from gompit and probit models, but the plots show a logit style spread, making the logit link function the best choice.
+<<Alcohol Relationships, echo = FALSE, fig.width = 13, fig.height=6.5>>=
+logreg <- glm(ALCABDEP12DX~FatherAlcoholic+MAJORDEPLIFE+SEX+ParentDeath+GENAXLIFE, family=binomial(link=logit))
+probreg<-glm(ALCABDEP12DX~FatherAlcoholic+MAJORDEPLIFE+SEX+ParentDeath+GENAXLIFE, family=binomial(link=probit))
+gompreg<-glm(ALCABDEP12DX~FatherAlcoholic+MAJORDEPLIFE+SEX+ParentDeath+GENAXLIFE, family=binomial(link=cloglog))
+deviance(logreg)
+ORFA<-exp(-.150607)
+ORMD<-exp(.1348131)
+ORSX<-exp(-.3811317)
+ORPD<-exp(.1765496)
+ORGA<-exp(-.1496792)
+par(mfrow=c(2,2))
+plot(logreg)
+p.FA = ORFA/(1+ORFA)
+p.MD = ORMD/(1+ORMD)
+p.Sex = ORSX/(1+ORSX)
+p.PD = ORPD/(1+ORPD)
+p.GA = ORGA/(1+ORGA)
+##
 @
+
 \vspace{-2ex}
 \end{block}
 \vfill
@@ -185,32 +163,48 @@ p4 + geom_polygon(color="white") + scale_fill_gradient2(low="blue", mid="grey90"
 \begin{minipage}[t][.955\textheight]{\linewidth} 
 %-- Block 3-1
 \vspace{0ex}
-\begin{block}{Random Forest Variable Importance}
-\vspace{-6ex}
-<<Rforest, echo = FALSE, fig.height=6.5>>=
-varImpPlot(rfMod, main = "", n.var = 10, pch = 19, cex=1.4, col = "black")
-RMSEmod3 <- sqrt(mean(rfMod$mse))
+\begin{block}{Odds Ratio for Each Variable}
+\vspace{0ex}
+<<Odds Ratio, echo = FALSE, fig.width=17, fig.height=3>>=
+
+ORFA<-exp(-.150607)
+ORMD<-exp(.1348131)
+ORSX<-exp(-.3811317)
+ORPD<-exp(.1765496)
+ORGA<-exp(-.1496792)
+
+
+
 ###########
-RMSEtestmod1a <- sqrt(mean((predict(BJmod, newdata= test_NCV) - test_NCV$pctfor)^2))
-RMSEtestmod1b <- sqrt(mean((predict(EMmod, newdata= test_NCV) - test_NCV$pctfor)^2))
-RMSEtestmod2 <- sqrt(mean((predict(pruneTree, newdata= test_NCV) - test_NCV$pctfor)^2))
-RMSEtestmod3 <- sqrt(mean((predict(rfMod, newdata = test_NCV) - test_NCV$pctfor)^2))
+
 #############################
-# predict(rfMod, newdata = NCV)
 @
-\vspace{-2ex}
+\[\begin{bmatrix}
+ &FAlc&MDep&Sex&PDth&GAnx\\
+OR&(0.860)&(1.144)&(0.683)&(1.193)&(0.861)\\
+\end{bmatrix}\]
+\vspace{0ex}
 \vfill
 \end{block}
 \vfill
 
 %-- Block 3-2
-\begin{block}{Prediction Errors}
+\begin{block}{Discussion}
+The logit model fits the data with the equation
+\begin{equation}
+Yi=e^\chi/(1+e^\chi)
+\end{equation}
+where 
+\begin{equation}
+\chi_i=\beta_0+\beta_1FAlc+\beta_2MajDep+\beta_3Sex+\beta_4ParDth+\beta_5GenAnx
+\end{equation}
+The goal of this model was to find some predictors for alcohol abuse that significantly relate childhood conditions/experiences with future alcoholism.  By fitting a logistic regresion model using the logit link function, probabilities that Alcohol Abuse = Yes can be computed for each predictor:
 <<Results, echo = FALSE, results='asis'>>=
-x1 <- c(RMSEmod1a,  RMSEmod1b, RMSEmod2, RMSEmod3)
-x2 <- c(RMSEtestmod1a, RMSEtestmod1b, RMSEtestmod2, RMSEtestmod3)
-XR <- rbind(x1, x2)
-dimnames(XR) <- list(c("Training Error", "Testing Error"), c('mod1A', 'mod1B', 'mod2', 'mod3'))
-xtable(XR, align = rep("c", 5), caption ="Training and Testing Error are the RMSE computed from a $K=10$ cross-validated model for all models except mod3.  The RMSE for the random forest model (mod3) does not use cross-validation.", label ="PT")
+p.FA #FatherAlcoholic
+p.MD
+p.PD
+p.Sex
+p.GA
 @
 \vspace{0ex}
 \vfill
@@ -218,11 +212,11 @@ xtable(XR, align = rep("c", 5), caption ="Training and Testing Error are the RMS
 \vfill
 
 %-- Block 3-3
-\begin{block}{Further Directions}
+\begin{block}{What This Means}
 \begin{itemize}
-\item Use the models developed in this poster to predict county votes for states that have had similar marriage amendments such as South Carolina, Wisconsin, South Dakota, Florida, Idaho, Alabama, Utah, Michigan, Texas, Arkansas, Louisiana, Kansas, Kentucky, Ohio, and Nebraska. 
-\item  Use ensemble methods (combining multiple models) for better prediction.
-\item  Make our local maps available via the internet using the shiny server.
+\item  The model produced distinct, significant predictors that can be used to show the probability of being an alcoholic based on several variables.  This means that there is a relationship between these predictors and future alcohol abuse, which is what the goal of this analysis was.  Discovering a relationship puts forth support for the theory that alcoholism is a mental illness, as it seems that childhood conditions can increase likelihood of future drinking, much like a traumatic event would increase the likelihood of PTSD, or another mental disorder.  This leads to the implication that alcoholics don't have as much free will when it comes to drinking as many believe, but instead are initially predisposed to the condition before their first drink.
+\item  This could lead to more research done on this condition, as not as much research has gone into alcoholism as has for other disorders.  These findings suggest that future alcoholism can be predicted, which means an attempt can start being made to decrease the likelihood of children becoming alcoholics based on their parent's choices.
+\item  This could also have future implications for all kinds of addictions, from drugs to gambling.  If results like these can be duplicated for different forms of addiction, there may be some universal underlying causes of addiction that can be examined more thoroughly, along with an inspection of differences between different kinds of addiction, in order to judge how predictions and interpretations differ for each.
 \end{itemize}
 \vspace{0ex}
 \vfill
@@ -231,18 +225,10 @@ xtable(XR, align = rep("c", 5), caption ="Training and Testing Error are the RMS
 
 %-- Block 3-4
 \begin{block}{References}
-\footnotesize
-\setbeamertemplate{bibliography item}[text]
-\vspace{-1ex}
-<<auto-bib, version=packageVersion('knitr'), echo=FALSE, cache=TRUE, message=FALSE, warning=FALSE>>=
-# write all packages in the current session to a bib file
-write_bib(c(.packages()), file = 'knitr-packages.bib')
-@
-
-\bibliographystyle{plain}  % can use plain but comment out natbib at top if using plain
-\bibliography{knitr-packages,poster}
-\normalsize
-\vfill
+\begin{itemize}
+\item \href{http://www1.appstate.edu/~arnholta/classes/PDS/}{NESARC codebook containing variables}
+\item \href{http://www.sciencedirect.com/science/article/pii/S0165178114006325}{The impact of childhood parental loss on risk for mood, anxiety and substance use disorders in a population-based sample of male twins (Hetema, et al.)}
+\end{itemize}
 \end{block} 
 \vfill
 
